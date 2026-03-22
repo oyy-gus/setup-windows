@@ -1,0 +1,79 @@
+Write-Host "===== MEMBERSIHKAN SOFTWARE ====="
+
+# Tutup installer yang mungkin bikin error 1603
+taskkill /f /im msiexec.exe 2>$null
+taskkill /f /im setup.exe 2>$null
+taskkill /f /im installer.exe 2>$null
+taskkill /f /im unins*.exe 2>$null
+
+function Force-Uninstall($name) {
+    $apps = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* ,
+                             HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* 2>$null |
+            Where-Object { $_.DisplayName -like "*$name*" }
+
+    foreach ($app in $apps) {
+        # MSI → uninstall silent
+        if ($app.PSChildName -match "^{.*}$") {
+            Write-Host "MSI remove: $($app.DisplayName)"
+            Start-Process "msiexec.exe" "/x $($app.PSChildName) /qn /norestart" -Wait
+        }
+        # EXE → paksa silent umum
+        elseif ($app.UninstallString) {
+            Write-Host "Force remove: $($app.DisplayName)"
+            $cmd = $app.UninstallString
+            if ($cmd -notmatch "/S|/silent|/qn|/quiet") {
+                $cmd += " /S /silent /qn /quiet /norestart"
+            }
+            Start-Process "cmd.exe" "/c $cmd" -Wait
+        }
+    }
+}
+
+# List software yang ingin dihapus dulu
+$removeApps = @(
+    "Mozilla Firefox","R for Windows","Unity Hub"
+)
+
+foreach ($app in $removeApps) {
+    winget uninstall --name "$app" --silent --force --disable-interactivity 2>$null
+    Force-Uninstall $app
+}
+
+# ====================== ENABLE WINDOWS DARK MODE ======================
+Write-Host "===== ENABLE DARK MODE WINDOWS ====="
+$regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+If (!(Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+Set-ItemProperty -Path $regPath -Name AppsUseLightTheme -Value 0
+Set-ItemProperty -Path $regPath -Name SystemUsesLightTheme -Value 0
+Stop-Process -Name explorer -Force
+Start-Sleep -Seconds 2
+Start-Process explorer.exe
+
+# ====================== INSTALL SOFTWARE ======================
+Write-Host "===== INSTALL VISUAL STUDIO CODE ====="
+winget install --id Microsoft.VisualStudioCode --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+
+# Buat shortcut desktop VS Code
+$desktop = [Environment]::GetFolderPath("Desktop")
+$vscodePath = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe"
+$shortcutPath = "$desktop\Visual Studio Code.lnk"
+if (Test-Path $vscodePath) {
+    $WshShell = New-Object -ComObject WScript.Shell
+    $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+    $Shortcut.TargetPath = $vscodePath
+    $Shortcut.IconLocation = "$vscodePath,0"
+    $Shortcut.Save()
+    Write-Host "Shortcut VS Code dibuat di desktop."
+}
+
+Write-Host "===== INSTALL DISCORD ====="
+winget install --id Discord.Discord --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+
+# ====================== OPEN LINK ======================
+Write-Host "===== OPEN ARENA.AI ====="
+Start-Process "https://www.roblox.com/create"
+Start-Process "https://arena.ai"
+Start-Process "https://youtube.com"
+
+Write-Host ""
+Write-Host "===== SELESAI - DARK MODE AKTIF, SOFTWARE TERINSTALL, ARENA.AI TERBUKA ====="
