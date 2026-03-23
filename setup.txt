@@ -12,12 +12,10 @@ function Force-Uninstall($name) {
             Where-Object { $_.DisplayName -like "*$name*" }
 
     foreach ($app in $apps) {
-        # MSI → uninstall silent
         if ($app.PSChildName -match "^{.*}$") {
             Write-Host "MSI remove: $($app.DisplayName)"
             Start-Process "msiexec.exe" "/x $($app.PSChildName) /qn /norestart" -Wait
         }
-        # EXE → paksa silent umum
         elseif ($app.UninstallString) {
             Write-Host "Force remove: $($app.DisplayName)"
             $cmd = $app.UninstallString
@@ -69,11 +67,31 @@ if (Test-Path $vscodePath) {
 Write-Host "===== INSTALL DISCORD ====="
 winget install --id Discord.Discord --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
 
+# ====================== INSTALL ROBLOX STUDIO ======================
+Write-Host "===== INSTALL ROBLOX STUDIO ====="
+
+$robloxUrl = "https://raw.githubusercontent.com/oyy-gus/setup-windows/master/installer/RobloxStudioInstaller.exe"
+$installerPath = "$env:TEMP\RobloxStudioInstaller.exe"
+
+try {
+    Invoke-WebRequest -Uri $robloxUrl -OutFile $installerPath
+    Write-Host "Download selesai."
+
+    # Jalankan installer
+    Start-Process $installerPath -ArgumentList "/silent","/qn" -Wait
+
+    Write-Host "Roblox Studio selesai diinstall."
+
+    # Hapus installer
+    Remove-Item $installerPath -Force
+} catch {
+    Write-Host "Gagal install Roblox Studio: $_"
+}
+
 # ====================== OPEN LINK ======================
-Write-Host "===== OPEN ARENA.AI ====="
-Start-Process "https://www.roblox.com/create"
+Write-Host "===== OPEN WEBSITE ====="
 Start-Process "https://arena.ai"
 Start-Process "https://youtube.com"
 
 Write-Host ""
-Write-Host "===== SELESAI - DARK MODE AKTIF, SOFTWARE TERINSTALL, ARENA.AI TERBUKA ====="
+Write-Host "===== SELESAI - DARK MODE AKTIF, SOFTWARE TERINSTALL, ROBLOX SIAP ====="
