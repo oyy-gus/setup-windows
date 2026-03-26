@@ -1,41 +1,4 @@
-Write-Host "===== MEMBERSIHKAN SOFTWARE ====="
-
-# Tutup installer yang mungkin bikin error 1603
-taskkill /f /im msiexec.exe 2>$null
-taskkill /f /im setup.exe 2>$null
-taskkill /f /im installer.exe 2>$null
-taskkill /f /im unins*.exe 2>$null
-
-function Force-Uninstall($name) {
-    $apps = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* ,
-                             HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* 2>$null |
-            Where-Object { $_.DisplayName -like "*$name*" }
-
-    foreach ($app in $apps) {
-        if ($app.PSChildName -match "^{.*}$") {
-            Write-Host "MSI remove: $($app.DisplayName)"
-            Start-Process "msiexec.exe" "/x $($app.PSChildName) /qn /norestart" -Wait
-        }
-        elseif ($app.UninstallString) {
-            Write-Host "Force remove: $($app.DisplayName)"
-            $cmd = $app.UninstallString
-            if ($cmd -notmatch "/S|/silent|/qn|/quiet") {
-                $cmd += " /S /silent /qn /quiet /norestart"
-            }
-            Start-Process "cmd.exe" "/c $cmd" -Wait
-        }
-    }
-}
-
-# List software yang ingin dihapus dulu
-$removeApps = @(
-    "Mozilla Firefox","R for Windows","Unity Hub"
-)
-
-foreach ($app in $removeApps) {
-    winget uninstall --name "$app" --silent --force --disable-interactivity 2>$null
-    Force-Uninstall $app
-}
+Write-Host "===== SETUP DIMULAI ====="
 
 # ====================== ENABLE WINDOWS DARK MODE ======================
 Write-Host "===== ENABLE DARK MODE WINDOWS ====="
@@ -47,23 +10,25 @@ Stop-Process -Name explorer -Force
 Start-Sleep -Seconds 2
 Start-Process explorer.exe
 
-# ====================== INSTALL SOFTWARE ======================
+# ====================== INSTALL VISUAL STUDIO CODE ======================
 Write-Host "===== INSTALL VISUAL STUDIO CODE ====="
 winget install --id Microsoft.VisualStudioCode --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
 
-# Buat shortcut desktop VS Code
+# Buat shortcut VS Code
 $desktop = [Environment]::GetFolderPath("Desktop")
 $vscodePath = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe"
-$shortcutPath = "$desktop\Visual Studio Code.lnk"
+$shortcutVS = "$desktop\Visual Studio Code.lnk"
+
 if (Test-Path $vscodePath) {
     $WshShell = New-Object -ComObject WScript.Shell
-    $Shortcut = $WshShell.CreateShortcut($shortcutPath)
+    $Shortcut = $WshShell.CreateShortcut($shortcutVS)
     $Shortcut.TargetPath = $vscodePath
     $Shortcut.IconLocation = "$vscodePath,0"
     $Shortcut.Save()
-    Write-Host "Shortcut VS Code dibuat di desktop."
+    Write-Host "Shortcut VS Code dibuat."
 }
 
+# ====================== INSTALL DISCORD ======================
 Write-Host "===== INSTALL DISCORD ====="
 winget install --id Discord.Discord --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
 
@@ -77,21 +42,45 @@ try {
     Invoke-WebRequest -Uri $robloxUrl -OutFile $installerPath
     Write-Host "Download selesai."
 
-    # Jalankan installer
-    Start-Process $installerPath -ArgumentList "/silent","/qn" -Wait
+    # Jalankan installer (tanpa silent biar pasti jalan)
+    Start-Process $installerPath -Wait
 
     Write-Host "Roblox Studio selesai diinstall."
 
-    # Hapus installer
     Remove-Item $installerPath -Force
 } catch {
     Write-Host "Gagal install Roblox Studio: $_"
 }
 
-# ====================== OPEN LINK ======================
+# ====================== BUAT SHORTCUT ROBLOX ======================
+Write-Host "===== BUAT SHORTCUT ROBLOX ====="
+
+$robloxFolder = "$env:LOCALAPPDATA\Roblox\Versions"
+
+if (Test-Path $robloxFolder) {
+    $latest = Get-ChildItem $robloxFolder | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $studioExe = "$($latest.FullName)\RobloxStudioBeta.exe"
+    $shortcutRBX = "$desktop\Roblox Studio.lnk"
+
+    if (Test-Path $studioExe) {
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($shortcutRBX)
+        $Shortcut.TargetPath = $studioExe
+        $Shortcut.IconLocation = "$studioExe,0"
+        $Shortcut.Save()
+
+        Write-Host "Shortcut Roblox Studio dibuat."
+    } else {
+        Write-Host "File RobloxStudioBeta.exe tidak ditemukan!"
+    }
+} else {
+    Write-Host "Folder Roblox tidak ditemukan!"
+}
+
+# ====================== OPEN WEBSITE ======================
 Write-Host "===== OPEN WEBSITE ====="
 Start-Process "https://arena.ai"
 Start-Process "https://youtube.com"
 
 Write-Host ""
-Write-Host "===== SELESAI - DARK MODE AKTIF, SOFTWARE TERINSTALL, ROBLOX SIAP ====="
+Write-Host "===== SELESAI - SEMUA SIAP DIGUNAKAN ====="
