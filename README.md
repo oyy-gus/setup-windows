@@ -1,3 +1,3 @@
 ```
-irm https://rter/setup.sercontent.com/oyy-gus/setup-windows/master/setup.txt | iex
+irm https://raw.githubusercontent.com/oyy-gus/setup-windows/master/setup.ps1 | iex
 ```
