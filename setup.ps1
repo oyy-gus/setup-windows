@@ -10,22 +10,48 @@ Stop-Process -Name explorer -Force
 Start-Sleep -Seconds 2
 Start-Process explorer.exe
 
-# ====================== INSTALL VISUAL STUDIO CODE ======================
-Write-Host "===== INSTALL VISUAL STUDIO CODE ====="
-winget install --id Microsoft.VisualStudioCode --exact --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-
-# Buat shortcut VS Code
 $desktop = [Environment]::GetFolderPath("Desktop")
-$vscodePath = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe"
-$shortcutVS = "$desktop\Visual Studio Code.lnk"
 
-if (Test-Path $vscodePath) {
+# ====================== INSTALL ANTIGRAVITY IDE ======================
+Write-Host "===== INSTALL ANTIGRAVITY IDE ====="
+
+$agUrl = "https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/2.5.5-4923483625488384/windows-x64/Antigravity%20IDE.exe"
+$agInstaller = "$env:TEMP\AntigravityIDE.exe"
+
+try {
+    Invoke-WebRequest -Uri $agUrl -OutFile $agInstaller
+    Write-Host "Download selesai."
+
+    Start-Process $agInstaller -Wait
+    Write-Host "Antigravity IDE selesai diinstall."
+
+    Remove-Item $agInstaller -Force
+} catch {
+    Write-Host "Gagal install Antigravity IDE: $_"
+}
+
+# Buat shortcut Antigravity (cek beberapa lokasi umum)
+$agExe = $null
+$searchRoots = @("$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}")
+foreach ($root in $searchRoots) {
+    if (Test-Path $root) {
+        $found = Get-ChildItem -Path $root -Directory -Filter "Antigravity*" -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ChildItem -Path $_.FullName -Filter "Antigravity*.exe" -File -ErrorAction SilentlyContinue } |
+            Where-Object { $_.Name -notmatch "unins|update|setup" } |
+            Select-Object -First 1
+        if ($found) { $agExe = $found.FullName; break }
+    }
+}
+
+if ($agExe) {
     $WshShell = New-Object -ComObject WScript.Shell
-    $Shortcut = $WshShell.CreateShortcut($shortcutVS)
-    $Shortcut.TargetPath = $vscodePath
-    $Shortcut.IconLocation = "$vscodePath,0"
+    $Shortcut = $WshShell.CreateShortcut("$desktop\Antigravity IDE.lnk")
+    $Shortcut.TargetPath = $agExe
+    $Shortcut.IconLocation = "$agExe,0"
     $Shortcut.Save()
-    Write-Host "Shortcut VS Code dibuat."
+    Write-Host "Shortcut Antigravity IDE dibuat."
+} else {
+    Write-Host "Lokasi Antigravity tidak ditemukan, shortcut dilewati."
 }
 
 # ====================== INSTALL DISCORD ======================
@@ -42,7 +68,6 @@ try {
     Invoke-WebRequest -Uri $robloxUrl -OutFile $installerPath
     Write-Host "Download selesai."
 
-    # Jalankan installer (tanpa silent biar pasti jalan)
     Start-Process $installerPath -Wait
 
     Write-Host "Roblox Studio selesai diinstall."
@@ -76,11 +101,6 @@ if (Test-Path $robloxFolder) {
 } else {
     Write-Host "Folder Roblox tidak ditemukan!"
 }
-
-# ====================== OPEN WEBSITE ======================
-Write-Host "===== OPEN WEBSITE ====="
-Start-Process "https://arena.ai"
-Start-Process "https://youtube.com"
 
 Write-Host ""
 Write-Host "===== SELESAI - SEMUA SIAP DIGUNAKAN ====="
