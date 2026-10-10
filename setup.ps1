@@ -1,16 +1,38 @@
 Write-Host "===== SETUP DIMULAI ====="
 
+$desktop = [Environment]::GetFolderPath("Desktop")
+
 # ====================== ENABLE WINDOWS DARK MODE ======================
 Write-Host "===== ENABLE DARK MODE WINDOWS ====="
 $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
 If (!(Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
 Set-ItemProperty -Path $regPath -Name AppsUseLightTheme -Value 0
 Set-ItemProperty -Path $regPath -Name SystemUsesLightTheme -Value 0
-Stop-Process -Name explorer -Force
-Start-Sleep -Seconds 2
-Start-Process explorer.exe
 
-$desktop = [Environment]::GetFolderPath("Desktop")
+try {
+    Stop-Process -Name explorer -Force -ErrorAction Stop
+    Start-Sleep -Seconds 2
+    Start-Process explorer.exe
+} catch {
+    Write-Host "Explorer tidak bisa direstart. Sign out lalu sign in untuk menerapkan dark mode."
+}
+
+# ====================== HAPUS APLIKASI ======================
+Write-Host "===== HAPUS APLIKASI ====="
+
+$hapus = @(
+    "Google Chrome",
+    "Mozilla Firefox",
+    "R for Windows",
+    "Rtools",
+    "Strawberry Perl",
+    "Unity Hub"
+)
+
+foreach ($app in $hapus) {
+    Write-Host "Menghapus: $app"
+    winget uninstall --name "$app" --silent --accept-source-agreements --disable-interactivity
+}
 
 # ====================== INSTALL ANTIGRAVITY IDE ======================
 Write-Host "===== INSTALL ANTIGRAVITY IDE ====="
@@ -20,7 +42,7 @@ $agInstaller = "$env:TEMP\AntigravityIDE.exe"
 
 try {
     Invoke-WebRequest -Uri $agUrl -OutFile $agInstaller
-    Write-Host "Download selesai."
+    Write-Host "Download selesai. Selesaikan wizard installer Antigravity (cek taskbar)."
 
     Start-Process $agInstaller -Wait
     Write-Host "Antigravity IDE selesai diinstall."
@@ -30,7 +52,9 @@ try {
     Write-Host "Gagal install Antigravity IDE: $_"
 }
 
-# Buat shortcut Antigravity (cek beberapa lokasi umum)
+# ====================== SHORTCUT ANTIGRAVITY ======================
+Write-Host "===== BUAT SHORTCUT ANTIGRAVITY ====="
+
 $agExe = $null
 $searchRoots = @("$env:LOCALAPPDATA\Programs", "$env:ProgramFiles", "${env:ProgramFiles(x86)}")
 foreach ($root in $searchRoots) {
@@ -69,7 +93,6 @@ try {
     Write-Host "Download selesai."
 
     Start-Process $installerPath -Wait
-
     Write-Host "Roblox Studio selesai diinstall."
 
     Remove-Item $installerPath -Force
@@ -77,7 +100,7 @@ try {
     Write-Host "Gagal install Roblox Studio: $_"
 }
 
-# ====================== BUAT SHORTCUT ROBLOX ======================
+# ====================== SHORTCUT ROBLOX ======================
 Write-Host "===== BUAT SHORTCUT ROBLOX ====="
 
 $robloxFolder = "$env:LOCALAPPDATA\Roblox\Versions"
@@ -85,15 +108,13 @@ $robloxFolder = "$env:LOCALAPPDATA\Roblox\Versions"
 if (Test-Path $robloxFolder) {
     $latest = Get-ChildItem $robloxFolder | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     $studioExe = "$($latest.FullName)\RobloxStudioBeta.exe"
-    $shortcutRBX = "$desktop\Roblox Studio.lnk"
 
     if (Test-Path $studioExe) {
         $WshShell = New-Object -ComObject WScript.Shell
-        $Shortcut = $WshShell.CreateShortcut($shortcutRBX)
+        $Shortcut = $WshShell.CreateShortcut("$desktop\Roblox Studio.lnk")
         $Shortcut.TargetPath = $studioExe
         $Shortcut.IconLocation = "$studioExe,0"
         $Shortcut.Save()
-
         Write-Host "Shortcut Roblox Studio dibuat."
     } else {
         Write-Host "File RobloxStudioBeta.exe tidak ditemukan!"
